@@ -14,9 +14,9 @@
 
 const CONFIG = {
     RULES: {
-        MIN_INTENSITY: 0.55, MAX_INTENSITY: 0.80,
-        MAX_SETS: 6, MIN_SETS: 2,
-        MIN_REST: 45, MAX_REST: 120,
+        MIN_INTENSITY: 0.01, MAX_INTENSITY: 0.99,
+        MAX_SETS: 60, MIN_SETS: 1,
+        MIN_REST: 1, MAX_REST: 1200,
     },
     FEEDBACK: {
         TROP_FACILE: 'trop_facile',
@@ -197,17 +197,18 @@ class TrainingModel {
     static generateWeek(weekNumber, maxReps, exerciseType, previousWeek = null, targetReps = null) {
         const day1 = this._createTestDay(maxReps);
         const progressionData = this._calculateProgression(maxReps, previousWeek);
-        
+
         // Volume de base ajusté par le facteur calculé
         const baseVolume = Math.round(maxReps * 2.5 * 6 * progressionData.factor);
-        
+
         const trainingDays = CONFIG.VOLUME_DISTRIBUTION.map((dist, index) => {
-            return this._createTrainingDay(index + 2, dist, baseVolume, maxReps);
+            return this._createTrainingDay(index + 2, dist, baseVolume, maxReps, progressionData, previousWeek);
         });
 
-        const globalAdvice = this._generateGlobalAdvice(maxReps, previousWeek, progressionData);
+        const plateauDetection = this._detectPlateau(previousWeek);
+        const globalAdvice = this._generateGlobalAdvice(maxReps, previousWeek, progressionData, plateauDetection);
         const finalTarget = targetReps || (previousWeek ? previousWeek.targetReps : null);
-        
+
         const program = [day1, ...trainingDays];
         const totalVolume = program.reduce((acc, day) => acc + (day.sets * day.reps), 0);
 
@@ -220,7 +221,13 @@ class TrainingModel {
             totalVolume,
             date: new Date().toISOString(),
             progressionFactor: progressionData.factor,
-            globalAdvice
+            globalAdvice,
+            dayTypePerformance: progressionData.dayTypePerformance,
+            plateauInfo: plateauDetection,
+            adaptationMetrics: progressionData.adaptationMetrics,
+            volumeCompletionRate: progressionData.volumeCompletionRate,
+            criticalFailure: progressionData.criticalFailure,
+            consecutiveFailures: progressionData.consecutiveFailures
         };
     }
 
@@ -231,76 +238,168 @@ class TrainingModel {
         };
     }
 
-    static _createTrainingDay(dayNum, dist, totalVolume, currentMax) {
-        const intensity = this._getIntensity(dist.type);
-        const repsPerSet = Math.max(1, Math.round(currentMax * intensity));
-        const dayVolume = Math.round(totalVolume * dist.coeff);
-        
-        let sets = Math.max(CONFIG.RULES.MIN_SETS, 
-                   Math.min(CONFIG.RULES.MAX_SETS, Math.round(dayVolume / repsPerSet)));
-        
-        const adjustedReps = Math.round(dayVolume / sets);
-        const rest = this._calculateRest(intensity, dist.type);
+    static _createTrainingDay(dayNum, dist, baseVolume, currentMax, progressionData = {}, previousWeek = null) {
+        const baseIntensity = this._getBaseIntensity(dist.type);
+        const intensity = this._getAdaptiveIntensity(dist.type, baseIntensity, progressionData, previousWeek);
+
+        const { sets, reps, fractionnementApplique } = this._calculateSmartSeriesReps(dist.type, baseVolume, currentMax, intensity, previousWeek, dist.coeff, progressionData);
+        const rest = this._calculateAdaptiveRest(dist.type, intensity, previousWeek, fractionnementApplique);
 
         return {
-            day: dayNum, dayType: dist.type, sets, reps: adjustedReps, rest,
-            explanation: this._getExplanation(dist.type, sets, adjustedReps, rest, intensity),
+            day: dayNum, dayType: dist.type, sets, reps, rest,
+            intensity: Math.round(intensity * 100),
+            fractionnementApplique,
+            explanation: this._getExplanation(dist.type, sets, reps, rest, intensity, fractionnementApplique),
             feedback: null
         };
     }
 
-    static _getIntensity(type) { return type === 'Léger' ? 0.60 : (type === 'Modéré' ? 0.70 : 0.75); }
+    static _getBaseIntensity(type) {
+        return type === 'Léger' ? 0.60 : (type === 'Modéré' ? 0.70 : 0.75);
+    }
 
-    static _calculateRest(intensity, type) {
-        let rest = type === 'Léger' ? 45 : (type === 'Modéré' ? 60 : 90);
-        if (intensity > 0.75) rest += 15;
-        return Math.max(CONFIG.RULES.MIN_REST, Math.min(CONFIG.RULES.MAX_REST, rest));
+    static _getAdaptiveIntensity(dayType, baseIntensity, progressionData = {}, previousWeek = null) {
+        if (!previousWeek || !progressionData.dayTypePerformance) return baseIntensity;
+
+        const perfData = progressionData.dayTypePerformance[dayType];
+        if (!perfData) return baseIntensity;
+
+        let adaptedIntensity = baseIntensity;
+
+        if (perfData.failureRate > 0.5) {
+            adaptedIntensity *= 0.90;
+        } else if (perfData.failureRate > 0.25) {
+            adaptedIntensity *= 0.95;
+        } else if (perfData.easyRate > 0.6) {
+            adaptedIntensity *= 1.05;
+        } else if (perfData.easyRate > 0.35) {
+            adaptedIntensity *= 1.02;
+        }
+
+        return Math.max(0.50, Math.min(0.85, adaptedIntensity));
+    }
+
+    static _calculateSmartSeriesReps(dayType, baseVolume, currentMax, intensity, previousWeek = null, distributionCoeff = 0.18, progressionData = {}) {
+        const repsPerSet = Math.max(1, Math.round(currentMax * intensity));
+        const dayVolume = Math.round(baseVolume * distributionCoeff);
+
+        let sets = Math.max(CONFIG.RULES.MIN_SETS,
+                   Math.min(CONFIG.RULES.MAX_SETS, Math.round(dayVolume / repsPerSet)));
+
+        let reps = Math.round(dayVolume / sets);
+        let fractionnementApplique = false;
+
+        if (previousWeek) {
+            const prevDay = previousWeek.program.find(d => d.dayType === dayType);
+            if (prevDay && prevDay.feedback === CONFIG.FEEDBACK.TROP_DIFFICILE && prevDay.actualSets !== undefined) {
+                const completedSets = parseInt(prevDay.actualSets) || 0;
+                const lastReps = parseInt(prevDay.actualLastReps) || 0;
+                const actualVolume = (completedSets * prevDay.reps) + lastReps;
+                const completionRate = actualVolume / (prevDay.sets * prevDay.reps);
+
+                if (completionRate < 0.60) {
+                    fractionnementApplique = true;
+                    const targetVolume = Math.round(dayVolume * Math.max(0.70, completionRate * 0.95));
+                    sets = Math.min(CONFIG.RULES.MAX_SETS, Math.round(sets * 1.5));
+                    reps = Math.max(1, Math.round(targetVolume / sets));
+                } else if (completionRate < 0.75) {
+                    fractionnementApplique = true;
+                    const targetVolume = Math.round(dayVolume * 0.85);
+                    sets = Math.min(CONFIG.RULES.MAX_SETS, Math.round(sets * 1.2));
+                    reps = Math.max(1, Math.round(targetVolume / sets));
+                } else if (completionRate < 0.85) {
+                    const targetVolume = Math.round(dayVolume * 0.92);
+                    reps = Math.max(1, reps - 1);
+                    sets = Math.min(CONFIG.RULES.MAX_SETS, Math.round(targetVolume / reps));
+                }
+            }
+        }
+
+        return { sets, reps, fractionnementApplique };
+    }
+
+    static _calculateAdaptiveRest(dayType, intensity, previousWeek = null, fractionnementApplique = false) {
+        let baseRest = dayType === 'Léger' ? 45 : (dayType === 'Modéré' ? 60 : 90);
+        if (intensity > 0.75) baseRest += 15;
+
+        if (fractionnementApplique) {
+            baseRest = Math.min(CONFIG.RULES.MAX_REST, baseRest + 20);
+        }
+
+        if (previousWeek) {
+            const prevDay = previousWeek.program.find(d => d.dayType === dayType);
+            if (prevDay && prevDay.feedback === CONFIG.FEEDBACK.TROP_DIFFICILE && !fractionnementApplique) {
+                baseRest = Math.min(CONFIG.RULES.MAX_REST, baseRest + 15);
+            } else if (prevDay && prevDay.feedback === CONFIG.FEEDBACK.TROP_FACILE && dayType !== 'Léger' && !fractionnementApplique) {
+                baseRest = Math.max(CONFIG.RULES.MIN_REST, baseRest - 10);
+            }
+        }
+
+        return Math.max(CONFIG.RULES.MIN_REST, Math.min(CONFIG.RULES.MAX_REST, baseRest));
     }
 
     // --- ALGORITHME DE PROGRESSION AVANCÉ ---
     static _calculateProgression(currentMax, previousWeek) {
-        if (!previousWeek) return { factor: 1.0, dominantFeedback: null, volumeCompletionRate: 1.0 };
+        if (!previousWeek) return {
+            factor: 1.0,
+            dominantFeedback: null,
+            volumeCompletionRate: 1.0,
+            dayTypePerformance: {},
+            adaptationMetrics: {},
+            consecutiveFailures: 0,
+            criticalFailure: false
+        };
 
         const delta = (currentMax - previousWeek.maxReps) / previousWeek.maxReps;
-        
+
         let totalPlannedVolume = 0;
         let totalActualVolume = 0;
-        
-        const feedbacks = [];
 
-        // Analyse détaillée du volume réel vs prévu
+        const feedbacks = [];
+        const dayTypePerformance = {
+            'Léger': { total: 0, easy: 0, perfect: 0, hard: 0, failure: 0, failureRate: 0, easyRate: 0 },
+            'Modéré': { total: 0, easy: 0, perfect: 0, hard: 0, failure: 0, failureRate: 0, easyRate: 0 },
+            'Intense': { total: 0, easy: 0, perfect: 0, hard: 0, failure: 0, failureRate: 0, easyRate: 0 }
+        };
+
         previousWeek.program.forEach(day => {
-            if (day.day === 1) return; // Ignore Test Day
-            
+            if (day.day === 1) return;
+
             const planned = day.sets * day.reps;
             totalPlannedVolume += planned;
-            
-            // Si données précises d'échec
+
+            const perf = dayTypePerformance[day.dayType];
+            if (perf) perf.total++;
+
             if (day.feedback === CONFIG.FEEDBACK.TROP_DIFFICILE && day.actualSets !== undefined) {
-                // Volume = Séries complètes * reps + reps dernière série
-                // Si actualSets n'est pas défini (ancienne version), on assume 70%
                 const completedSets = parseInt(day.actualSets) || 0;
                 const lastReps = parseInt(day.actualLastReps) || 0;
                 const actual = (completedSets * day.reps) + lastReps;
                 totalActualVolume += actual;
+                if (perf) perf.failure++;
                 feedbacks.push(day.feedback);
-            } 
-            else if (day.feedback === CONFIG.FEEDBACK.TROP_DIFFICILE) {
-                // Échec sans détails (fallback)
+            } else if (day.feedback === CONFIG.FEEDBACK.TROP_DIFFICILE) {
                 totalActualVolume += planned * 0.75;
+                if (perf) perf.failure++;
                 feedbacks.push(day.feedback);
-            }
-            else {
-                // Succès (on assume 100% du volume fait)
+            } else {
                 totalActualVolume += planned;
+                if (day.feedback === CONFIG.FEEDBACK.TROP_FACILE && perf) perf.easy++;
+                if (day.feedback === CONFIG.FEEDBACK.PARFAIT && perf) perf.perfect++;
+                if (day.feedback === CONFIG.FEEDBACK.DIFFICILE_FINI && perf) perf.hard++;
                 if (day.feedback) feedbacks.push(day.feedback);
             }
         });
 
-        // Ratio de complétion (ex: 0.85 si 85% du volume a été fait)
+        Object.values(dayTypePerformance).forEach(perf => {
+            if (perf.total > 0) {
+                perf.failureRate = perf.failure / perf.total;
+                perf.easyRate = perf.easy / perf.total;
+            }
+        });
+
         const volumeCompletionRate = totalPlannedVolume > 0 ? (totalActualVolume / totalPlannedVolume) : 1.0;
 
-        // Détermination feedback dominant
         let dominant = CONFIG.FEEDBACK.PARFAIT;
         const totalF = feedbacks.length;
         if (totalF > 0) {
@@ -309,51 +408,137 @@ class TrainingModel {
             else if (feedbacks.filter(f => f === CONFIG.FEEDBACK.TROP_FACILE).length > totalF/2) dominant = CONFIG.FEEDBACK.TROP_FACILE;
         }
 
-        // --- DÉCISION DU FACTEUR ---
+        const criticalFailure = volumeCompletionRate < 0.60;
+
         let factor = 1.0;
-
         if (dominant === CONFIG.FEEDBACK.TROP_DIFFICILE) {
-            // AJUSTEMENT CHIRURGICAL:
-            // Si l'utilisateur a échoué, on aligne le volume futur sur sa capacité réelle démontrée
-            // On prend le taux de complétion comme base pour le facteur
-            // Ex: s'il a fait 80% du volume, factor = 0.85 (légère marge de progression)
-            factor = Math.max(0.70, volumeCompletionRate * 0.95); 
-        } 
-        else if (delta > 0.10) factor = dominant === CONFIG.FEEDBACK.TROP_FACILE ? 1.15 : 1.10;
-        else if (delta > 0.03) factor = dominant === CONFIG.FEEDBACK.TROP_DIFFICILE ? 0.90 : 1.05; // Cas rare
-        else if (delta > -0.03) factor = dominant === CONFIG.FEEDBACK.TROP_FACILE ? 1.08 : 1.0;
-        else factor = 0.85; // Régression
+            factor = Math.max(0.70, volumeCompletionRate * 0.95);
+        } else if (delta > 0.10) {
+            factor = dominant === CONFIG.FEEDBACK.TROP_FACILE ? 1.15 : 1.10;
+        } else if (delta > 0.03) {
+            factor = dominant === CONFIG.FEEDBACK.TROP_DIFFICILE ? 0.90 : 1.05;
+        } else if (delta > -0.03) {
+            factor = dominant === CONFIG.FEEDBACK.TROP_FACILE ? 1.08 : 1.0;
+        } else {
+            factor = 0.85;
+        }
 
-        return { factor, dominantFeedback: dominant, volumeCompletionRate };
+        const allWeeks = StorageService.load().allWeeks || [];
+        const consecutiveFailures = this._countConsecutiveFailures(allWeeks, previousWeek.exerciseType);
+
+        return {
+            factor,
+            dominantFeedback: dominant,
+            volumeCompletionRate,
+            dayTypePerformance,
+            adaptationMetrics: { delta, totalF },
+            consecutiveFailures,
+            criticalFailure
+        };
     }
 
-    static _getExplanation(dayType, sets, reps, rest, intensity) {
+    static _countConsecutiveFailures(allWeeks, exerciseType) {
+        const relevantWeeks = allWeeks.filter(w => w.exerciseType === exerciseType).reverse();
+        let count = 0;
+        for (const week of relevantWeeks) {
+            const failureCount = (week.program || []).filter(d => d.feedback === CONFIG.FEEDBACK.TROP_DIFFICILE).length;
+            if (failureCount > 0) count++;
+            else break;
+        }
+        return count;
+    }
+
+    static _detectPlateau(previousWeek) {
+        if (!previousWeek) return null;
+
+        const allWeeks = StorageService.load().allWeeks || [];
+        const sameExercise = allWeeks.filter(w => w.exerciseType === previousWeek.exerciseType);
+
+        if (sameExercise.length < 3) {
+            return { detected: false, weeksSinceGain: 0, suggestion: null };
+        }
+
+        let weeksSinceGain = 0;
+        let detected = false;
+        let suggestion = null;
+
+        for (let i = sameExercise.length - 1; i >= 0 && i >= sameExercise.length - 4; i--) {
+            const week = sameExercise[i];
+            if (i > 0) {
+                const prevWeekData = sameExercise[i - 1];
+                if (week.maxReps > prevWeekData.maxReps) {
+                    weeksSinceGain = sameExercise.length - i - 1;
+                    break;
+                }
+            }
+        }
+
+        if (weeksSinceGain >= 3) {
+            detected = true;
+            suggestion = "Plateau de 3+ semaines détecté ! Augmentez l'intensité ou variez vos exercices.";
+        } else if (weeksSinceGain === 2) {
+            suggestion = "Attention : stagnation sur 2 semaines. Restez vigilant.";
+        }
+
+        return { detected, weeksSinceGain, suggestion };
+    }
+
+    static _getExplanation(dayType, sets, reps, rest, intensity, fractionnementApplique = false) {
         const pct = Math.round(intensity * 100);
+
+        if (fractionnementApplique) {
+            return `📊 FRACTIONNEMENT APPLIQUÉ - Après l'échec précédent, j'ai augmenté les séries (${sets}) et réduit les répétitions (${reps}) pour accumuler le volume progressivement. Intensité ${pct}% avec repos augmenté (${rest}s) pour meilleure récupération.`;
+        }
+
         if (dayType === 'Léger') return `Jour de récupération active à ${pct}% de votre max. Le volume réduit (${sets} séries) permet à vos muscles de récupérer tout en maintenant la technique. Repos court (${rest}s).`;
         if (dayType === 'Modéré') return `Entraînement équilibré à ${pct}% de votre max. ${sets} séries de ${reps} répétitions pour construire la force sans épuisement. Repos de ${rest}s pour une récupération partielle.`;
         return `Jour de stimulation maximale à ${pct}% de votre max ! ${sets} séries pour générer l'adaptation musculaire. Repos de ${rest}s pour récupération complète.`;
     }
 
-    static _generateGlobalAdvice(currentMax, previousWeek, data) {
-        if (!previousWeek) return "Bienvenue ! Ce programme commence par un test, puis alterne jours intenses et légers.";
-        
+    static _generateGlobalAdvice(currentMax, previousWeek, data, plateauInfo) {
+        if (!previousWeek) {
+            return "Bienvenue ! Ce programme commence par un test, puis alterne jours intenses et légers.";
+        }
+
         const diff = currentMax - previousWeek.maxReps;
-        let text = diff > 0 
+        let text = diff > 0
             ? `Excellent ! Progression de ${diff} répétitions. `
             : (diff === 0 ? `Stagnation normale (${currentMax} reps). ` : `Légère baisse de ${Math.abs(diff)} reps. `);
 
         if (data.dominantFeedback === CONFIG.FEEDBACK.TROP_FACILE) {
-            text += "Programme précédent facile : volume augmenté.";
+            text += "Programme précédent facile : volume augmenté. ";
+            const intensePerf = data.dayTypePerformance?.['Intense'];
+            if (intensePerf?.easyRate > 0.5) {
+                text += "J'ai aussi augmenté l'intensité des jours difficiles.";
+            }
         } else if (data.dominantFeedback === CONFIG.FEEDBACK.TROP_DIFFICILE) {
-            // Message intelligent basé sur le taux de complétion
             const pct = Math.round(data.volumeCompletionRate * 100);
-            text += `Vous avez atteint l'échec technique (Volume réalisé : ${pct}%). J'ai recalibré précisément le volume de cette semaine pour correspondre à votre capacité réelle, sans vous épuiser.`;
+            text += `Vous avez atteint l'échec technique (Volume réalisé : ${pct}%). `;
+
+            if (data.criticalFailure) {
+                text += `📊 Stratégie: J'ai AUGMENTÉ les séries et RÉDUIT les répétitions pour surpasser ce seuil d'échec progressivement. Le volume global a été ajusté à la baisse temporairement avec repos augmentés pour favoriser la récupération. `;
+            } else {
+                text += `J'ai recalibré le volume pour correspondre à votre capacité réelle. `;
+            }
+
+            if (data.consecutiveFailures >= 2) {
+                text += `⚠️ Échec sur ${data.consecutiveFailures} semaines consécutives : l'intensité et le repos ont été ajustés. `;
+            }
+
+            const moderatePerf = data.dayTypePerformance?.['Modéré'];
+            if (moderatePerf?.failureRate > 0.5) {
+                text += "Les jours modérés étaient trop durs : j'ai réduit l'intensité.";
+            }
         } else if (data.dominantFeedback === CONFIG.FEEDBACK.DIFFICILE_FINI) {
-            text += "Difficulté correcte : volume maintenu pour adaptation.";
+            text += "Difficulté correcte : adaptation de 3% appliquée pour progression stable. ";
         } else {
-            text += "Progression standard (+5%) appliquée.";
+            text += "Progression standard (+5%) appliquée. ";
         }
-        
+
+        if (plateauInfo?.suggestion) {
+            text += ` ⚠️ ${plateauInfo.suggestion}`;
+        }
+
         return text;
     }
 
@@ -556,16 +741,16 @@ class AppController {
             this.ui.display.goalContainer.classList.add('hidden');
         }
 
-        // Si des données détaillées d'échec sont présentes, l'explication sera adaptée
-        // Note : le calcul se fait sur la semaine PRÉCÉDENTE pour générer l'actuelle
-        this.ui.display.globalExp.innerHTML = week.globalAdvice || TrainingModel._generateGlobalAdvice(week.maxReps, null, {});
+        this.ui.display.globalExp.innerHTML = this._renderGlobalAdviceWithMetrics(week);
 
         this._refreshChart();
 
         this.ui.display.tableBody.innerHTML = week.program.map(day => {
             const isRest = day.rest > 0;
+            const intensityBadge = day.intensity ? `<span class="intensity-badge" title="Intensité adaptée">${day.intensity}%</span>` : '';
+            const fractionnementBadge = day.fractionnementApplique ? `<span class="fractionn-badge" title="Fractionnement appliqué suite à un échec">📊 Frac.</span>` : '';
             return `<tr>
-                <td><div class="day-label">J${day.day}</div><div class="day-type">${day.dayType}</div></td>
+                <td><div class="day-label">J${day.day}</div><div class="day-type">${day.dayType}</div>${intensityBadge}${fractionnementBadge}</td>
                 <td><strong>${day.sets}</strong></td>
                 <td><strong>${day.reps}</strong></td>
                 <td class="${isRest ? 'cursor-pointer hover:text-primary' : ''}" ${isRest ? `onclick="window.app.timer.start(${day.rest})"` : ''}>${day.rest || '-'}s${isRest ? ' ⏱️' : ''}</td>
@@ -628,6 +813,50 @@ class AppController {
         } else {
             container.classList.add('hidden');
         }
+    }
+
+    _renderGlobalAdviceWithMetrics(week) {
+        let html = `<p>${week.globalAdvice || "Programme généré."}</p>`;
+
+        if (week.dayTypePerformance) {
+            html += '<div class="adaptation-metrics" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--text-muted);">';
+            html += '<h4 style="font-size: 0.9rem; color: var(--text-dim); margin-bottom: 1rem; text-transform: uppercase;">Performance par type de jour</h4>';
+            html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">';
+
+            ['Léger', 'Modéré', 'Intense'].forEach(type => {
+                const perf = week.dayTypePerformance[type];
+                if (perf && perf.total > 0) {
+                    const failurePct = Math.round(perf.failureRate * 100);
+                    const easyPct = Math.round(perf.easyRate * 100);
+                    const perfectPct = Math.round((perf.perfect / perf.total) * 100);
+                    const hardPct = Math.round((perf.hard / perf.total) * 100);
+
+                    let statusColor = 'var(--success)';
+                    let statusText = '✓ Optimal';
+                    if (failurePct > 30) {
+                        statusColor = 'var(--danger)';
+                        statusText = '⚠ Trop dur';
+                    } else if (easyPct > 40) {
+                        statusColor = 'var(--warning)';
+                        statusText = '↑ Facile';
+                    }
+
+                    html += `<div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border-left: 3px solid ${statusColor};">
+                        <div style="font-weight: 600; font-size: 0.9rem; color: white; margin-bottom: 0.5rem;">${type}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">${statusText}</div>
+                        <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 2px;">
+                            ${failurePct > 0 ? `<span>Échec: ${failurePct}%</span>` : ''}
+                            ${perfectPct > 0 ? `<span>Parfait: ${perfectPct}%</span>` : ''}
+                            ${easyPct > 0 ? `<span>Facile: ${easyPct}%</span>` : ''}
+                        </div>
+                    </div>`;
+                }
+            });
+
+            html += '</div></div>';
+        }
+
+        return html;
     }
 
     _btnHTML(d, t, e, l) { return `<button class="btn-day-feedback" data-day="${d}" data-feedback="${t}"><span>${e}</span><span>${l}</span></button>`; }

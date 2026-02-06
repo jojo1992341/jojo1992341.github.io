@@ -245,6 +245,8 @@ body {
 .program-table td { padding: 1.2rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: top; }
 .day-label { font-weight: 700; color: var(--primary); }
 .day-type { font-size: 0.85rem; color: var(--text-muted); }
+.intensity-badge { display: inline-block; background: rgba(0, 212, 255, 0.15); border: 1px solid var(--secondary); color: var(--secondary); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-top: 4px; }
+.fractionn-badge { display: inline-block; background: rgba(245, 158, 11, 0.15); border: 1px solid var(--warning); color: var(--warning); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-top: 4px; margin-left: 4px; }
 .explanation-cell { font-size: 0.9rem; color: var(--text-dim); line-height: 1.4; }
 
 /* CHART & CONTROLS */
