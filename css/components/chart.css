@@ -256,8 +256,19 @@
     }
 
     .mobile-menu-toggle .chart-toggle {
-        padding: 0.5rem 0.8rem;
+        padding: 0.5rem 0.5rem;
+        /* Réduire padding horizontal pour éviter débordement */
         font-size: 0.75rem;
+        flex: 1 1 auto;
+        /* Permet aux boutons de remplir la ligne de manière égale */
+        min-width: 80px;
+        /* Largeur minimale pour éviter d'être illisible */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        margin: 2px;
+        /* Espacement pour éviter qu'ils se touchent */
     }
 
     .mobile-menu-toggle {
