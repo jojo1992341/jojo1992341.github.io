@@ -59,4 +59,12 @@
     .form-group-row {
         grid-template-columns: 1fr;
     }
+
+    /* Disable backdrop-filter on mobile to prevent flashing */
+    .form-input,
+    .form-select {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background: rgba(15, 52, 96, 0.95);
+    }
 }
