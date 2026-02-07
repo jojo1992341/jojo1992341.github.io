@@ -523,7 +523,7 @@ window.AppController = class AppController {
                         <strong>📊 Détails de l'échec</strong><br>
                         Entrez combien de séries vous avez complètement réalisées et combien de répétitions vous avez faites à la dernière série (partiellement complétée). Ces informations permettent au programme de s'adapter précisément.
                     </p>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem">
+                    <div>
                         <div>
                             <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem; color:var(--text-dim); font-weight:600">Séries Complètement Réalisées</label>
                             <input type="number" class="form-input" style="padding:0.5rem; background:rgba(15,52,96,0.8)" placeholder="Ex: 2" min="0" max="${day.sets}"

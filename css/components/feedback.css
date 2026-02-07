@@ -222,4 +222,8 @@
     .day-feedback-text {
         font-size: 0.7rem;
     }
+
+    .failure-inputs>div {
+        grid-template-columns: 1fr;
+    }
 }
