@@ -2,8 +2,9 @@
    FEEDBACK
    ======================================== */
 .day-feedback-item {
-    background: rgba(15, 52, 96, 0.5);
-    backdrop-filter: blur(10px);
+    background: rgba(15, 52, 96, 0.85);
+    /* Plus opaque car plus de flou */
+    /* backdrop-filter: blur(10px); Supprimé cause scintillement mobile */
     padding: var(--spacing-md);
     border-radius: var(--radius-lg);
     margin-bottom: var(--spacing-sm);
