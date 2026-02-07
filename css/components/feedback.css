@@ -2,19 +2,13 @@
    FEEDBACK
    ======================================== */
 .day-feedback-item {
-    background: rgba(15, 52, 96, 0.85);
-    /* Plus opaque car plus de flou */
-    /* backdrop-filter: blur(10px); Supprimé cause scintillement mobile */
+    background: rgba(15, 52, 96, 0.5);
+    backdrop-filter: blur(10px);
     padding: var(--spacing-md);
     border-radius: var(--radius-lg);
     margin-bottom: var(--spacing-sm);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    /* Optimisation rendu Chrome Mobile pour éviter clignotement */
-    transform: translate3d(0, 0, 0);
-    -webkit-transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    will-change: transform, opacity;
+    animation: fadeInUp 0.4s ease-out backwards;
 }
 
 .day-feedback-item:nth-child(1) {
@@ -207,14 +201,6 @@
     font-weight: 700;
     color: var(--text-main);
     font-size: 1.1rem;
-}
-
-/* Conteneur des items de feedback */
-#dailyFeedbackContainer {
-    min-height: 200px;
-    /* Évite le repli brutal lors du filtrage */
-    contain: content;
-    /* Optimisation de rendu */
 }
 
 @media (max-width: 768px) {
