@@ -120,16 +120,18 @@
                         <span class="pedagogy-icon" aria-hidden="true">🎓</span>
                         Analyse Semaine
                     </h3>
-
-                    <button class="chart-toggle active" data-analysis="overview" aria-pressed="true">Vue
-                        Globale</button>
-                    <button class="chart-toggle" data-analysis="optimization" aria-pressed="false">Optimisation</button>
-                    <button class="chart-toggle" data-analysis="alerts" aria-pressed="false">Alertes</button>
+                    <div class="chart-controls mobile-menu-toggle" id="analysisToggleGroup" role="group"
+                        aria-label="Type d'analyse">
+                        <button class="chart-toggle active" data-analysis="overview" aria-pressed="true">Vue
+                            Globale</button>
+                        <button class="chart-toggle" data-analysis="optimization"
+                            aria-pressed="false">Optimisation</button>
+                        <button class="chart-toggle" data-analysis="alerts" aria-pressed="false">Alertes</button>
+                    </div>
                 </div>
-            </div>
-            <div id="globalExplanation" class="pedagogy-text">
-                <!-- Injecté par JS -->
-            </div>
+                <div id="globalExplanation" class="pedagogy-text">
+                    <!-- Injecté par JS -->
+                </div>
             </div>
 
             <!-- Graphique avec Toggles -->
