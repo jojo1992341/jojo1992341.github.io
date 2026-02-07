@@ -1,19 +1,22 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Coach Progression | Pompes & Abdominaux</title>
-    
+
     <!-- PWA & Mobile -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1A1A2E">
+    <meta name="theme-color" content="#FF4444">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon-192.png">
-    
-    <link rel="stylesheet" href="style.css">
+
+    <link rel="stylesheet" href="css/main.css">
+
 </head>
+
 <body>
 
     <header class="header" role="banner">
@@ -27,12 +30,12 @@
     </header>
 
     <main class="container" role="main">
-        
+
         <!-- SECTION 1: CONFIGURATION (SETUP) -->
         <section id="setupSection" class="setup-section" aria-labelledby="setupTitle">
             <div class="card setup-card">
                 <h2 id="setupTitle" class="section-title">Nouvelle Semaine</h2>
-                
+
                 <div class="form-group">
                     <label for="exerciseSelect" class="form-label">Exercice</label>
                     <select id="exerciseSelect" class="form-select">
@@ -44,29 +47,16 @@
                 <div class="form-group-row">
                     <div class="form-group">
                         <label for="maxReps" class="form-label">Max Actuel</label>
-                        <input 
-                            type="number" 
-                            id="maxReps" 
-                            class="form-input" 
-                            min="1" 
-                            max="999" 
-                            placeholder="Ex: 20"
-                            required
-                        >
+                        <input type="number" id="maxReps" class="form-input" min="1" max="999" placeholder="Ex: 20"
+                            required>
                     </div>
                     <div class="form-group">
                         <label for="targetReps" class="form-label">Objectif (Optionnel)</label>
-                        <input 
-                            type="number" 
-                            id="targetReps" 
-                            class="form-input" 
-                            min="1" 
-                            max="999" 
-                            placeholder="Ex: 50"
-                        >
+                        <input type="number" id="targetReps" class="form-input" min="1" max="999" placeholder="Ex: 50">
                     </div>
                 </div>
-                <p class="form-hint" style="margin-top: -1rem; margin-bottom: 1.5rem;">Testez votre max actuel sur une seule série.</p>
+                <p class="form-hint" style="margin-top: -1rem; margin-bottom: 1.5rem;">Testez votre max actuel sur une
+                    seule série.</p>
 
                 <button id="generateBtn" class="btn btn-primary">
                     <span class="btn-icon" aria-hidden="true">🚀</span>
@@ -91,9 +81,20 @@
 
         <!-- SECTION 2: PROGRAMME EN COURS -->
         <section id="programSection" class="program-section hidden" aria-live="polite">
-            
+
             <!-- Info Semaine & Objectif -->
             <div class="card info-card">
+                <div class="chart-header" style="margin-bottom: 1.5rem;">
+                    <h3 class="week-title" style="margin-bottom: 0; font-size: 1.2rem;">Résumé Semaine</h3>
+                    <div class="chart-controls" id="statsToggleGroup" role="group"
+                        aria-label="Métrique des statistiques">
+                        <button class="chart-toggle active" data-stat-metric="max" aria-pressed="true">Perfo
+                            Max</button>
+                        <button class="chart-toggle" data-stat-metric="progression"
+                            aria-pressed="false">Progression</button>
+                        <button class="chart-toggle" data-stat-metric="volume" aria-pressed="false">Volume</button>
+                    </div>
+                </div>
                 <div class="week-info">
                     <div class="week-badge">
                         <span class="badge-label">Semaine</span>
@@ -101,7 +102,7 @@
                     </div>
                     <div class="week-details">
                         <h3 class="week-title" id="weekTitle">Pompes</h3>
-                        <div class="stats-grid">
+                        <div class="stats-grid" id="statsContainer">
                             <p class="week-stat">Max actuel: <strong id="weekMax">0</strong></p>
                             <div id="goalContainer" class="week-stat goal-stat hidden">
                                 <span aria-hidden="true">🎯</span> Objectif: <strong id="goalValue">0</strong>
@@ -114,13 +115,23 @@
 
             <!-- Explication Globale -->
             <div class="card pedagogy-card">
-                <h3 class="pedagogy-title">
-                    <span class="pedagogy-icon" aria-hidden="true">🎓</span>
-                    Analyse
-                </h3>
-                <p class="pedagogy-text" id="globalExplanation">
+                <div class="chart-header" style="margin-bottom: 1.5rem;">
+                    <h3 class="pedagogy-title" style="margin-bottom: 0;">
+                        <span class="pedagogy-icon" aria-hidden="true">🎓</span>
+                        Analyse Semaine
+                    </h3>
+                    <div class="chart-controls mobile-menu-toggle" id="analysisToggleGroup" role="group"
+                        aria-label="Type d'analyse">
+                        <button class="chart-toggle active" data-analysis="overview" aria-pressed="true">Vue
+                            Globale</button>
+                        <button class="chart-toggle" data-analysis="optimization"
+                            aria-pressed="false">Optimisation</button>
+                        <button class="chart-toggle" data-analysis="alerts" aria-pressed="false">Alertes</button>
+                    </div>
+                </div>
+                <div id="globalExplanation" class="pedagogy-text">
                     <!-- Injecté par JS -->
-                </p>
+                </div>
             </div>
 
             <!-- Graphique avec Toggles -->
@@ -139,6 +150,16 @@
 
             <!-- Tableau -->
             <div class="card program-card">
+                <div class="chart-header" style="margin-bottom: 1.5rem;">
+                    <h3 class="program-title" style="margin-bottom: 0; font-size: 1.2rem;">Programme Détaillé</h3>
+                    <div class="chart-controls mobile-menu-toggle" id="tableToggleGroup" role="group"
+                        aria-label="Filtres du tableau">
+                        <button class="chart-toggle active" data-table-filter="all" aria-pressed="true">Tous</button>
+                        <button class="chart-toggle" data-table-filter="leger" aria-pressed="false">Léger</button>
+                        <button class="chart-toggle" data-table-filter="modere" aria-pressed="false">Modéré</button>
+                        <button class="chart-toggle" data-table-filter="intense" aria-pressed="false">Intense</button>
+                    </div>
+                </div>
                 <div class="program-table-container">
                     <table class="program-table">
                         <thead>
@@ -147,7 +168,7 @@
                                 <th>Séries</th>
                                 <th>Reps</th>
                                 <th>Repos</th>
-                                <th>Objectif</th>
+                                <th>Détails & Objectif</th>
                             </tr>
                         </thead>
                         <tbody id="programTableBody">
@@ -159,31 +180,49 @@
 
             <!-- Feedback -->
             <div class="card feedback-card">
-                <h3 class="feedback-title">
-                    <span class="feedback-icon" aria-hidden="true">📝</span>
-                    Suivi quotidien
-                </h3>
+                <div class="chart-header" style="margin-bottom: 1.5rem;">
+                    <h3 class="feedback-title" style="margin-bottom: 0;">
+                        <span class="feedback-icon" aria-hidden="true">📝</span>
+                        Suivi Quotidien
+                    </h3>
+                    <div class="chart-controls mobile-menu-toggle" id="feedbackToggleGroup" role="group"
+                        aria-label="Filtres du suivi">
+                        <button class="chart-toggle active" data-feedback-filter="all" aria-pressed="true">Tous</button>
+                        <button class="chart-toggle" data-feedback-filter="completed"
+                            aria-pressed="false">Complétés</button>
+                        <button class="chart-toggle" data-feedback-filter="failed" aria-pressed="false">Échoués</button>
+                        <button class="chart-toggle" data-feedback-filter="pending" aria-pressed="false">En
+                            attente</button>
+                    </div>
+                </div>
+                <div id="feedbackStats" class="feedback-stats"
+                    style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px; display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.9rem;">
+                    <!-- Injecté par JS -->
+                </div>
                 <div id="dailyFeedbackContainer" class="daily-feedback-container">
                     <!-- Injecté par JS -->
                 </div>
             </div>
 
             <!-- Actions -->
-            <div class="actions">
-                <button id="reopenWeekBtn" class="btn btn-secondary">
-                    <span class="btn-icon" aria-hidden="true">📋</span> Actuel
-                </button>
-                <button id="newWeekBtn" class="btn btn-primary">
-                    <span class="btn-icon" aria-hidden="true">➕</span> Nouvelle semaine
-                </button>
-                <button id="historyBtn" class="btn btn-secondary">
-                    <span class="btn-icon" aria-hidden="true">📊</span> Historique
-                </button>
+            <div class="actions-section">
+                <div class="actions">
+                    <button id="newWeekBtn" class="btn btn-primary">
+                        <span class="btn-icon" aria-hidden="true">➕</span> Nouvelle Semaine
+                    </button>
+                    <button id="reopenWeekBtn" class="btn btn-secondary">
+                        <span class="btn-icon" aria-hidden="true">📋</span> Semaine Actuelle
+                    </button>
+                    <button id="historyBtn" class="btn btn-secondary">
+                        <span class="btn-icon" aria-hidden="true">📊</span> Historique
+                    </button>
+                </div>
             </div>
         </section>
 
         <!-- SECTION 3: HISTORIQUE (MODAL) -->
-        <section id="historySection" class="history-section hidden" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+        <section id="historySection" class="history-section hidden" role="dialog" aria-modal="true"
+            aria-labelledby="histTitle">
             <div class="card history-card">
                 <div class="history-header">
                     <h2 id="histTitle" class="section-title">Historique</h2>
@@ -213,6 +252,24 @@
         <p>Coach Progression © 2026</p>
     </footer>
 
+    <!-- SCRIPTS (Ordre de dépendance important) -->
+
+    <!-- 1. Config & Base -->
+    <script src="js/config.js"></script>
+
+    <!-- 2. Infrastructure & Services -->
+    <script src="js/services/audio.service.js"></script>
+    <script src="js/services/storage.service.js"></script>
+    <script src="js/services/filter.service.js"></script>
+    <script src="js/services/chart.service.js"></script>
+    <script src="js/services/timer.service.js"></script>
+
+    <!-- 3. Domain Model -->
+    <script src="js/models/training.model.js"></script>
+
+    <!-- 4. Controller & Main -->
+    <script src="js/app.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

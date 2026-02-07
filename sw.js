@@ -2,9 +2,29 @@ const CACHE_NAME = 'coach-progression-v1';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
-    './style.css',
+    './manifest.json',
     './script.js',
-    './manifest.json'
+    './js/config.js',
+    './js/app.js',
+    './js/services/audio.service.js',
+    './js/services/chart.service.js',
+    './js/services/filter.service.js',
+    './js/services/storage.service.js',
+    './js/services/timer.service.js',
+    './js/models/training.model.js',
+    './css/main.css',
+    './css/variables.css',
+    './css/base.css',
+    './css/layout.css',
+    './css/components/buttons.css',
+    './css/components/cards.css',
+    './css/components/chart.css',
+    './css/components/feedback.css',
+    './css/components/forms.css',
+    './css/components/history.css',
+    './css/components/program.css',
+    './css/components/table.css',
+    './css/components/timer.css'
 ];
 
 // Installation : Mise en cache des ressources

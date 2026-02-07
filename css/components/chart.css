@@ -1,0 +1,272 @@
+/* ========================================
+   CHART
+   ======================================== */
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.chart-controls {
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(15, 52, 96, 0.6);
+    backdrop-filter: blur(10px);
+    padding: 5px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chart-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 6px 16px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: var(--radius-full);
+    transition: var(--transition);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.chart-toggle:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.chart-toggle.active {
+    background: var(--gradient-primary);
+    color: white;
+    box-shadow: 0 2px 10px rgba(255, 68, 68, 0.3);
+}
+
+.chart-container {
+    width: 100%;
+    min-height: 300px;
+    position: relative;
+    user-select: none;
+    padding: var(--spacing-md);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow: visible;
+}
+
+#progressChart {
+    width: 100%;
+    height: auto;
+    animation: chartFadeIn 0.6s ease-out;
+}
+
+.chart-path {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: drawPath 1.2s ease-out 0.2s forwards;
+}
+
+.chart-points {
+    animation: pointsFadeIn 0.5s ease-out 0.8s backwards;
+}
+
+.chart-point {
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+.chart-point:nth-child(1) {
+    animation-delay: 1s;
+}
+
+.chart-point:nth-child(2) {
+    animation-delay: 1.1s;
+}
+
+.chart-point:nth-child(3) {
+    animation-delay: 1.2s;
+}
+
+.chart-point:nth-child(4) {
+    animation-delay: 1.3s;
+}
+
+.chart-point:nth-child(5) {
+    animation-delay: 1.4s;
+}
+
+.chart-point:nth-child(6) {
+    animation-delay: 1.5s;
+}
+
+.chart-point:nth-child(7) {
+    animation-delay: 1.6s;
+}
+
+.chart-point .point-main {
+    filter: drop-shadow(0 0 0px rgba(255, 68, 68, 0.3));
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.chart-point:hover .point-main,
+.chart-point.active .point-main {
+    filter: drop-shadow(0 0 12px currentColor);
+    transform: scale(1.4);
+}
+
+.chart-point .point-halo {
+    animation: haloGlow 1.5s ease-in-out infinite;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.chart-point:hover .point-halo,
+.chart-point.active .point-halo {
+    opacity: 1;
+}
+
+.chart-tooltip {
+    position: absolute;
+    background: linear-gradient(135deg, rgba(22, 33, 62, 0.95) 0%, rgba(15, 52, 96, 0.9) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 1rem;
+    min-width: 180px;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    animation: tooltipFadeIn 0.2s ease-out;
+}
+
+.chart-tooltip.hidden {
+    display: none;
+}
+
+.annotation-plateau circle,
+.annotation-pr circle {
+    animation: annotationPulse 2s ease-in-out infinite;
+}
+
+.annotation-plateau text,
+.annotation-pr text {
+    font-weight: 900;
+}
+
+@keyframes chartFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes drawPath {
+    from {
+        stroke-dashoffset: 1000;
+    }
+
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes pointsFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes popIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes haloGlow {
+
+    0%,
+    100% {
+        r: 8;
+        stroke-opacity: 0;
+    }
+
+    50% {
+        r: 14;
+        stroke-opacity: 0.4;
+    }
+}
+
+@keyframes annotationPulse {
+
+    0%,
+    100% {
+        opacity: 0.7;
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -40%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Mobile Menu Toggle (Often used within Chart context for toggles) */
+.mobile-menu-toggle {
+    display: flex;
+}
+
+@media (max-width: 768px) {
+    .chart-container {
+        min-height: 280px;
+        padding: var(--spacing-sm);
+    }
+
+    .mobile-menu-toggle .chart-toggle {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.75rem;
+    }
+
+    .mobile-menu-toggle {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 500px) {
+    .chart-container {
+        min-height: 240px;
+    }
+}
