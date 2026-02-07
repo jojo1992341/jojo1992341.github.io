@@ -342,7 +342,6 @@ window.AppController = class AppController {
             }
 
             item.style.display = shouldShow ? '' : 'none';
-            item.style.animation = shouldShow ? 'fadeInUp 0.3s ease-out' : 'none';
         });
 
         this._updateFeedbackStats();
