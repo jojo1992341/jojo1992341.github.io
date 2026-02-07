@@ -262,6 +262,10 @@
 
     .mobile-menu-toggle {
         flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        margin-top: 0.5rem;
+        /* Ajout d'un peu d'espace si ça passe à la ligne */
     }
 }
 
