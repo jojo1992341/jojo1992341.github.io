@@ -1,0 +1,170 @@
+/* ========================================
+   TABLEAU PROGRAMME
+   ======================================== */
+.program-table-container {
+    overflow-x: auto;
+    border-radius: var(--radius);
+    margin-top: var(--spacing-sm);
+}
+
+.program-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 650px;
+}
+
+.program-table thead {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+}
+
+.program-table th {
+    text-align: left;
+    padding: 1.2rem 1rem;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    position: sticky;
+    top: 0;
+    background: rgba(15, 52, 96, 0.9);
+    backdrop-filter: blur(10px);
+}
+
+.program-table tbody tr {
+    transition: var(--transition);
+    animation: fadeInUp 0.4s ease-out backwards;
+}
+
+.program-table tbody tr:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.program-table tbody tr:nth-child(2) {
+    animation-delay: 0.05s;
+}
+
+.program-table tbody tr:nth-child(3) {
+    animation-delay: 0.1s;
+}
+
+.program-table tbody tr:nth-child(4) {
+    animation-delay: 0.15s;
+}
+
+.program-table tbody tr:nth-child(5) {
+    animation-delay: 0.2s;
+}
+
+.program-table tbody tr:nth-child(6) {
+    animation-delay: 0.25s;
+}
+
+.program-table tbody tr:nth-child(7) {
+    animation-delay: 0.3s;
+}
+
+.program-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: scale(1.005);
+}
+
+.program-table tbody tr:nth-child(odd) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.program-table td {
+    padding: 1.5rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: top;
+}
+
+.program-table td:first-child {
+    border-left: 3px solid transparent;
+    transition: border-color var(--transition);
+}
+
+.program-table tbody tr[data-day-type="Léger"] td:first-child {
+    border-left-color: var(--day-leger);
+    background: var(--day-leger-bg);
+}
+
+.program-table tbody tr[data-day-type="Modéré"] td:first-child {
+    border-left-color: var(--day-modere);
+    background: var(--day-modere-bg);
+}
+
+.program-table tbody tr[data-day-type="Intense"] td:first-child {
+    border-left-color: var(--day-intense);
+    background: var(--day-intense-bg);
+}
+
+.day-label {
+    font-weight: 800;
+    color: var(--primary);
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: 0.2rem;
+}
+
+.day-type {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.intensity-badge {
+    display: inline-block;
+    background: rgba(0, 212, 255, 0.15);
+    border: 1px solid var(--secondary);
+    color: var(--secondary);
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-top: 6px;
+    letter-spacing: 0.3px;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.fractionn-badge {
+    display: inline-block;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid var(--warning);
+    color: var(--warning);
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-top: 6px;
+    margin-left: 6px;
+    letter-spacing: 0.3px;
+    animation: bounce 1s ease-out;
+}
+
+.explanation-cell {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.hover\:text-primary:hover {
+    color: var(--primary) !important;
+}
+
+@media (max-width: 768px) {
+    .program-table-container {
+        margin-left: calc(-1 * var(--spacing-md));
+        margin-right: calc(-1 * var(--spacing-md));
+        border-radius: 0;
+    }
+}
