@@ -215,6 +215,7 @@ window.AppController = class AppController {
             this._save();
             this.uiService.renderFeedbackButtons(dayNum, feedbackType);
             this.uiService.renderFailureInputs(dayNum, feedbackType); // Afficher/Masquer inputs
+            this.uiService.updateSessionCompletionIndicator(dayNum, true);
             this._updateStatsDisplay(); // Mettre à jour les stats
             this._refreshChart();       // Mettre à jour le graphique
         }

@@ -90,11 +90,16 @@ window.UIService = class UIService {
             const fractionnementBadge = day.fractionnementApplique ? `<span class="fractionn-badge" title="Fractionnement appliqué après un échec">📊 Frac.</span>` : '';
             const clickHint = isTestDay ? '' : '<div class="day-type" style="opacity:0.7">Cliquez pour suivi 📝</div>';
 
+            const isCompleted = !isTestDay && !!day.feedback;
+            const restCellHtml = isCompleted
+                ? `<td class="session-status-cell" style="color:#10B981; font-weight:700;" title="Séance complétée">✓</td>`
+                : `<td class="${isRest ? 'cursor-pointer hover:text-primary' : ''}" ${isRest ? `onclick="event.stopPropagation(); window.app.timer.start(${day.rest})"` : 'style="color: var(--text-muted)"'} title="${isRest ? 'Cliquez pour démarrer le minuteur' : 'Pas de repos ce jour'}">${day.rest || '-'}s${isRest ? ' ⏱️' : ''}</td>`;
+
             const trainingRow = `<tr data-day-type="${day.dayType}" ${isTestDay ? '' : `class="session-row" data-session-day="${day.day}"`}>
                 <td><div class="day-label">${dayLabel}</div>${sessionLabel}<div class="day-type">${day.dayType}</div>${clickHint}${intensityBadge}${fractionnementBadge}</td>
                 <td><strong>${day.sets}</strong></td>
                 <td><strong>${day.reps}</strong></td>
-                <td class="${isRest ? 'cursor-pointer hover:text-primary' : ''}" ${isRest ? `onclick="event.stopPropagation(); window.app.timer.start(${day.rest})"` : 'style="color: var(--text-muted)"'} title="${isRest ? 'Cliquez pour démarrer le minuteur' : 'Pas de repos ce jour'}">${day.rest || '-'}s${isRest ? ' ⏱️' : ''}</td>
+                ${restCellHtml}
                 <td><div class="explanation-cell">${day.explanation}</div></td>
             </tr>`;
 
@@ -181,6 +186,23 @@ window.UIService = class UIService {
         });
 
         target.classList.toggle('hidden');
+    }
+
+    updateSessionCompletionIndicator(dayNum, isCompleted) {
+        const row = this.ui.display.tableBody?.querySelector(`tr.session-row[data-session-day="${dayNum}"]`);
+        if (!row) return;
+
+        const restCell = row.children[3];
+        if (!restCell) return;
+
+        if (isCompleted) {
+            restCell.className = 'session-status-cell';
+            restCell.style.color = '#10B981';
+            restCell.style.fontWeight = '700';
+            restCell.textContent = '✓';
+            restCell.title = 'Séance complétée';
+            restCell.removeAttribute('onclick');
+        }
     }
 
     updateFeedbackDisplay(currentWeek, filter) {
