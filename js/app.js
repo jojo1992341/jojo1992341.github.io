@@ -25,8 +25,6 @@ window.AppController = class AppController {
                 globalExp: document.getElementById('globalExplanation'),
                 statsContainer: document.getElementById('statsContainer'),
                 tableBody: document.getElementById('programTableBody'),
-                feedback: document.getElementById('dailyFeedbackContainer'),
-                feedbackStats: document.getElementById('feedbackStats'),
                 historyContent: document.getElementById('historyContent'),
                 chartContainer: document.getElementById('progressionChart'),
                 goalContainer: document.getElementById('goalContainer'),
@@ -99,12 +97,6 @@ window.AppController = class AppController {
                 this.uiService.updateToggleButtons('#tableToggleGroup', e.target.dataset.tableFilter);
             }
 
-            // Feedback filter toggle
-            if (e.target.matches('[data-feedback-filter]')) {
-                this.filters.setFilter('feedbackFilter', e.target.dataset.feedbackFilter);
-                this._updateFeedbackDisplay();
-                this.uiService.updateToggleButtons('#feedbackToggleGroup', e.target.dataset.feedbackFilter);
-            }
         });
     }
 
@@ -150,10 +142,6 @@ window.AppController = class AppController {
 
     _updateTableDisplay() {
         this.uiService.updateTableDisplay(this.state.currentWeek, this.filters.getFilter('tableFilter'));
-    }
-
-    _updateFeedbackDisplay() {
-        this.uiService.updateFeedbackDisplay(this.state.currentWeek, this.filters.getFilter('feedbackFilter'));
     }
 
     _save() { StorageService.save({ allWeeks: this.state.allWeeks }); }
@@ -259,7 +247,6 @@ window.AppController = class AppController {
         this.uiService.updateToggleButtons('#statsToggleGroup', this.filters.getFilter('statMetric'));
         this.uiService.updateToggleButtons('#analysisToggleGroup', this.filters.getFilter('analysisType'));
         this.uiService.updateToggleButtons('#tableToggleGroup', this.filters.getFilter('tableFilter'));
-        this.uiService.updateToggleButtons('#feedbackToggleGroup', this.filters.getFilter('feedbackFilter'));
 
         // Updates
         this._updateStatsDisplay();
@@ -271,7 +258,6 @@ window.AppController = class AppController {
         });
         this._updateTableDisplay();
 
-        this._updateFeedbackDisplay();
     }
 
     _showHistory() {
