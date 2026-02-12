@@ -215,6 +215,7 @@ window.AppController = class AppController {
             this._save();
             this.uiService.renderFeedbackButtons(dayNum, feedbackType);
             this.uiService.renderFailureInputs(dayNum, feedbackType); // Afficher/Masquer inputs
+            this.uiService.updateSessionCompletionIndicator(dayNum, true);
             this._updateStatsDisplay(); // Mettre à jour les stats
             this._refreshChart();       // Mettre à jour le graphique
         }
@@ -264,14 +265,11 @@ window.AppController = class AppController {
         this._updateStatsDisplay();
         this._updateAnalysisDisplay();
         this._refreshChart();
-        this.uiService.renderProgramTable(week);
-        this._updateTableDisplay();
-
-        // Render Feedbacks with Callbacks passing
-        this.uiService.renderDailyFeedbacks(week, {
+        this.uiService.renderProgramTable(week, {
             onFeedback: (day, type) => this._handleFeedback(day, type),
             onFailureDetails: (day, type, value) => this._handleFailureDetails(day, type, value)
         });
+        this._updateTableDisplay();
 
         this._updateFeedbackDisplay();
     }

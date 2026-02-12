@@ -10,8 +10,22 @@ window.TrainingModel = class TrainingModel {
         // Volume de base ajusté par le facteur calculé
         const baseVolume = Math.round(maxReps * 2.5 * 6 * progressionData.factor);
 
-        const trainingDays = CONFIG.VOLUME_DISTRIBUTION.map((dist, index) => {
-            return this._createTrainingDay(index + 2, dist, baseVolume, maxReps, progressionData, previousWeek);
+        const trainingDays = CONFIG.VOLUME_DISTRIBUTION.flatMap((dist, index) => {
+            const calendarDay = index + 2;
+            const sessionCoeff = dist.coeff / 2;
+
+            return [
+                this._createTrainingDay((index * 2) + 2, dist, baseVolume, maxReps, progressionData, previousWeek, {
+                    calendarDay,
+                    timeOfDay: 'Matin',
+                    coeff: sessionCoeff
+                }),
+                this._createTrainingDay((index * 2) + 3, dist, baseVolume, maxReps, progressionData, previousWeek, {
+                    calendarDay,
+                    timeOfDay: 'Soir',
+                    coeff: sessionCoeff
+                })
+            ];
         });
 
         const plateauDetection = this._detectPlateau(previousWeek);
@@ -47,15 +61,18 @@ window.TrainingModel = class TrainingModel {
         };
     }
 
-    static _createTrainingDay(dayNum, dist, baseVolume, currentMax, progressionData = {}, previousWeek = null) {
+    static _createTrainingDay(dayNum, dist, baseVolume, currentMax, progressionData = {}, previousWeek = null, sessionInfo = {}) {
         const baseIntensity = this._getBaseIntensity(dist.type);
         const intensity = this._getAdaptiveIntensity(dist.type, baseIntensity, progressionData, previousWeek);
+        const distributionCoeff = sessionInfo.coeff || dist.coeff;
 
-        const { sets, reps, fractionnementApplique } = this._calculateSmartSeriesReps(dist.type, baseVolume, currentMax, intensity, previousWeek, dist.coeff, progressionData);
-        const rest = this._calculateAdaptiveRest(dist.type, intensity, previousWeek, fractionnementApplique);
+        const { sets, reps, fractionnementApplique } = this._calculateSmartSeriesReps(dist.type, baseVolume, currentMax, intensity, previousWeek, distributionCoeff, dayNum);
+        const rest = this._calculateAdaptiveRest(dist.type, intensity, previousWeek, fractionnementApplique, dayNum);
 
         return {
             day: dayNum, dayType: dist.type, sets, reps, rest,
+            calendarDay: sessionInfo.calendarDay || dayNum,
+            timeOfDay: sessionInfo.timeOfDay || null,
             intensity: Math.round(intensity * 100),
             fractionnementApplique,
             explanation: this._getExplanation(dist.type, sets, reps, rest, intensity, fractionnementApplique),
@@ -88,7 +105,7 @@ window.TrainingModel = class TrainingModel {
         return Math.max(0.50, Math.min(0.85, adaptedIntensity));
     }
 
-    static _calculateSmartSeriesReps(dayType, baseVolume, currentMax, intensity, previousWeek = null, distributionCoeff = 0.18, progressionData = {}) {
+    static _calculateSmartSeriesReps(dayType, baseVolume, currentMax, intensity, previousWeek = null, distributionCoeff = 0.18, sessionDayNum = null) {
         const repsPerSet = Math.max(1, Math.round(currentMax * intensity));
         const dayVolume = Math.round(baseVolume * distributionCoeff);
 
@@ -99,7 +116,7 @@ window.TrainingModel = class TrainingModel {
         let fractionnementApplique = false;
 
         if (previousWeek) {
-            const prevDay = previousWeek.program.find(d => d.dayType === dayType);
+            const prevDay = previousWeek.program.find(d => d.day === sessionDayNum);
             if (prevDay && prevDay.feedback === CONFIG.FEEDBACK.TROP_DIFFICILE && prevDay.actualSets !== undefined) {
                 const completedSets = parseInt(prevDay.actualSets) || 0;
                 const lastReps = parseInt(prevDay.actualLastReps) || 0;
@@ -127,7 +144,7 @@ window.TrainingModel = class TrainingModel {
         return { sets, reps, fractionnementApplique };
     }
 
-    static _calculateAdaptiveRest(dayType, intensity, previousWeek = null, fractionnementApplique = false) {
+    static _calculateAdaptiveRest(dayType, intensity, previousWeek = null, fractionnementApplique = false, sessionDayNum = null) {
         let baseRest = dayType === 'Léger' ? 45 : (dayType === 'Modéré' ? 60 : 90);
         if (intensity > 0.75) baseRest += 15;
 
@@ -136,7 +153,7 @@ window.TrainingModel = class TrainingModel {
         }
 
         if (previousWeek) {
-            const prevDay = previousWeek.program.find(d => d.dayType === dayType);
+            const prevDay = previousWeek.program.find(d => d.day === sessionDayNum);
             if (prevDay && prevDay.feedback === CONFIG.FEEDBACK.TROP_DIFFICILE && !fractionnementApplique) {
                 baseRest = Math.min(CONFIG.RULES.MAX_REST, baseRest + 15);
             } else if (prevDay && prevDay.feedback === CONFIG.FEEDBACK.TROP_FACILE && dayType !== 'Léger' && !fractionnementApplique) {
@@ -310,7 +327,7 @@ window.TrainingModel = class TrainingModel {
 
     static _generateGlobalAdvice(currentMax, previousWeek, data, plateauInfo) {
         if (!previousWeek) {
-            return "Bienvenue dans votre programme personnalisé ! Semaine 1 commence par un test de calibrage, suivi de 6 jours d'entraînement alternant intensité faible, moyenne et élevée pour stimuler la progression tout en permettant la récupération.";
+            return "Bienvenue dans votre programme personnalisé ! Semaine 1 commence par un test de calibrage, suivi de 6 jours d'entraînement avec 2 séances par jour (matin et soir), alternant intensité faible, moyenne et élevée pour stimuler la progression tout en permettant la récupération.";
         }
 
         const diff = currentMax - previousWeek.maxReps;
