@@ -78,21 +78,109 @@ window.UIService = class UIService {
         });
     }
 
-    renderProgramTable(currentWeek) {
+    renderProgramTable(currentWeek, feedbackHandlers = null) {
         if (!currentWeek || !this.ui.display.tableBody) return;
 
         this.ui.display.tableBody.innerHTML = currentWeek.program.map(day => {
             const isRest = day.rest > 0;
+            const isTestDay = day.day === 1;
+            const dayLabel = day.calendarDay ? `J${day.calendarDay}` : `J${day.day}`;
+            const sessionLabel = day.timeOfDay ? `<div class="day-type">${day.timeOfDay}</div>` : '';
             const intensityBadge = day.intensity ? `<span class="intensity-badge" title="Intensité: ${day.intensity}%">${day.intensity}%</span>` : '';
             const fractionnementBadge = day.fractionnementApplique ? `<span class="fractionn-badge" title="Fractionnement appliqué après un échec">📊 Frac.</span>` : '';
-            return `<tr data-day-type="${day.dayType}">
-                <td><div class="day-label">J${day.day}</div><div class="day-type">${day.dayType}</div>${intensityBadge}${fractionnementBadge}</td>
+            const clickHint = isTestDay ? '' : '<div class="day-type" style="opacity:0.7">Cliquez pour suivi 📝</div>';
+
+            const trainingRow = `<tr data-day-type="${day.dayType}" ${isTestDay ? '' : `class="session-row" data-session-day="${day.day}"`}>
+                <td><div class="day-label">${dayLabel}</div>${sessionLabel}<div class="day-type">${day.dayType}</div>${clickHint}${intensityBadge}${fractionnementBadge}</td>
                 <td><strong>${day.sets}</strong></td>
                 <td><strong>${day.reps}</strong></td>
-                <td class="${isRest ? 'cursor-pointer hover:text-primary' : ''}" ${isRest ? `onclick="window.app.timer.start(${day.rest})"` : 'style="color: var(--text-muted)"'} title="${isRest ? 'Cliquez pour démarrer le minuteur' : 'Pas de repos ce jour'}">${day.rest || '-'}s${isRest ? ' ⏱️' : ''}</td>
+                <td class="${isRest ? 'cursor-pointer hover:text-primary' : ''}" ${isRest ? `onclick="event.stopPropagation(); window.app.timer.start(${day.rest})"` : 'style="color: var(--text-muted)"'} title="${isRest ? 'Cliquez pour démarrer le minuteur' : 'Pas de repos ce jour'}">${day.rest || '-'}s${isRest ? ' ⏱️' : ''}</td>
                 <td><div class="explanation-cell">${day.explanation}</div></td>
             </tr>`;
+
+            if (isTestDay) return trainingRow;
+
+            return `${trainingRow}
+            <tr class="feedback-inline-row hidden" data-feedback-row="${day.day}" data-day-type="${day.dayType}">
+                <td colspan="5" style="padding: 1rem 1.25rem; background: rgba(255,255,255,0.02); border-top: 1px dashed rgba(255,255,255,0.12);">
+                    <div class="day-feedback-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
+                        <span><strong>Suivi ${dayLabel}${day.timeOfDay ? ` (${day.timeOfDay})` : ''}</strong> - ${day.dayType}</span>
+                        <span style="font-size:0.75rem; color: var(--text-muted);">${day.sets} × ${day.reps} reps</span>
+                    </div>
+                    <div class="day-feedback-buttons" id="feedback-btns-${day.day}">
+                        ${this._btnHTML(day.day, 'trop_facile', '😊', 'Trop Facile', 'Je maîtrise bien cet exercice')}
+                        ${this._btnHTML(day.day, 'parfait', '👍', 'Parfait', 'Difficulté idéale')}
+                        ${this._btnHTML(day.day, 'difficile_fini', '😅', 'Difficile', 'J\'ai terminé mais c\'était dur')}
+                        ${this._btnHTML(day.day, 'trop_difficile', '😰', 'Impossible', 'J\'ai échoué avant la fin')}
+                    </div>
+                    <div id="failure-inputs-${day.day}" class="failure-inputs hidden" style="margin-top:1rem; padding-top:1rem; border-top:1px dashed var(--text-muted)">
+                        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem">
+                            <strong>📊 Détails de l'échec</strong><br>
+                            Entrez combien de séries vous avez complètement réalisées et combien de répétitions vous avez faites à la dernière série (partiellement complétée).
+                        </p>
+                        <div>
+                            <div>
+                                <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem; color:var(--text-dim); font-weight:600">Séries Complètement Réalisées</label>
+                                <input type="number" class="form-input failure-sets-input" data-day="${day.day}" style="padding:0.5rem; background:rgba(15,52,96,0.8)" placeholder="Ex: 2" min="0" max="${day.sets}" value="${day.actualSets !== undefined ? day.actualSets : ''}">
+                                <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem">Sur ${day.sets} prévues</p>
+                            </div>
+                            <div>
+                                <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem; color:var(--text-dim); font-weight:600">Reps à la Dernière Série</label>
+                                <input type="number" class="form-input failure-reps-input" data-day="${day.day}" style="padding:0.5rem; background:rgba(15,52,96,0.8)" placeholder="Ex: 8" min="0" max="${day.reps}" value="${day.actualLastReps !== undefined ? day.actualLastReps : ''}">
+                                <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem">Avant l'échec (${day.reps} prévues)</p>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>`;
         }).join('');
+
+        if (!feedbackHandlers) return;
+
+        this.ui.display.tableBody.querySelectorAll('.session-row').forEach(row => {
+            row.addEventListener('click', () => {
+                const dayNum = parseInt(row.dataset.sessionDay);
+                this.toggleInlineFeedback(dayNum);
+            });
+        });
+
+        this.ui.display.tableBody.querySelectorAll('.btn-day-feedback').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                feedbackHandlers.onFeedback(parseInt(e.currentTarget.dataset.day), e.currentTarget.dataset.feedback);
+            });
+        });
+
+        this.ui.display.tableBody.querySelectorAll('.failure-sets-input').forEach(input => {
+            input.addEventListener('click', (e) => e.stopPropagation());
+            input.addEventListener('change', (e) => feedbackHandlers.onFailureDetails(parseInt(e.target.dataset.day), 'sets', e.target.value));
+        });
+
+        this.ui.display.tableBody.querySelectorAll('.failure-reps-input').forEach(input => {
+            input.addEventListener('click', (e) => e.stopPropagation());
+            input.addEventListener('change', (e) => feedbackHandlers.onFailureDetails(parseInt(e.target.dataset.day), 'reps', e.target.value));
+        });
+
+        currentWeek.program.forEach(day => {
+            if (day.day === 1) return;
+            if (day.feedback) {
+                this.renderFeedbackButtons(day.day, day.feedback);
+                this.renderFailureInputs(day.day, day.feedback);
+            }
+        });
+    }
+
+    toggleInlineFeedback(dayNum) {
+        const target = document.querySelector(`tr[data-feedback-row="${dayNum}"]`);
+        if (!target) return;
+
+        const allRows = this.ui.display.tableBody.querySelectorAll('.feedback-inline-row');
+        allRows.forEach(row => {
+            if (row === target) return;
+            row.classList.add('hidden');
+        });
+
+        target.classList.toggle('hidden');
     }
 
     updateFeedbackDisplay(currentWeek, filter) {
@@ -150,11 +238,12 @@ window.UIService = class UIService {
 
         currentWeek.program.forEach(day => {
             if (day.day === 1) return;
+            const dayTitle = day.calendarDay ? `Jour ${day.calendarDay}${day.timeOfDay ? ` (${day.timeOfDay})` : ''}` : `Jour ${day.day}`;
             const div = document.createElement('div');
             div.className = 'day-feedback-item';
             div.innerHTML = `
                 <div class="day-feedback-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <span><strong>Jour ${day.day}</strong> - ${day.dayType}</span>
+                    <span><strong>${dayTitle}</strong> - ${day.dayType}</span>
                     <span style="font-size: 0.75rem; color: var(--text-muted);">${day.sets} × ${day.reps} reps</span>
                 </div>
                 <div class="day-feedback-buttons" id="feedback-btns-${day.day}">
