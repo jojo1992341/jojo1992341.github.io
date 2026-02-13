@@ -1,4 +1,4 @@
-const CACHE_NAME = 'coach-progression-v1';
+const CACHE_NAME = 'coach-progression-v2';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -11,7 +11,11 @@ const ASSETS_TO_CACHE = [
     './js/services/filter.service.js',
     './js/services/storage.service.js',
     './js/services/timer.service.js',
+    './js/services/analysis.service.js',
+    './js/services/ui.service.js',
     './js/models/training.model.js',
+    './icon-192.png',
+    './icon-512.png',
     './css/main.css',
     './css/variables.css',
     './css/base.css',

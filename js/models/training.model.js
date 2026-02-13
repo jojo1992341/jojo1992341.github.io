@@ -42,6 +42,7 @@ window.TrainingModel = class TrainingModel {
             targetReps: finalTarget,
             program,
             totalVolume,
+            fractionnementApplique: trainingDays.some(day => day.fractionnementApplique),
             date: new Date().toISOString(),
             progressionFactor: progressionData.factor,
             globalAdvice,
