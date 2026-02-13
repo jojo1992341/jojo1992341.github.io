@@ -268,7 +268,9 @@ window.ChartService = class ChartService {
                 `;
             }
 
-            if (i > 0 && data[i].val > Math.max(...data.map(d => d.val), data[i].val)) {
+            if (i > 0) {
+                const previousBest = Math.max(...data.slice(0, i).map(d => d.val));
+                if (data[i].val <= previousBest) continue;
                 annotations += `
                     <g class="annotation-pr">
                         <circle cx="${coords[i].x}" cy="${coords[i].y - 20}" r="12" fill="rgba(16, 185, 129, 0.2)" stroke="#10B981" stroke-width="2"/>

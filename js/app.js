@@ -29,7 +29,8 @@ window.AppController = class AppController {
                 chartContainer: document.getElementById('progressionChart'),
                 goalContainer: document.getElementById('goalContainer'),
                 goalValue: document.getElementById('goalValue'),
-                predictionBadge: document.getElementById('predictionBadge')
+                predictionBadge: document.getElementById('predictionBadge'),
+                kpiDashboard: document.getElementById('kpiDashboard')
             }
         };
 
@@ -45,6 +46,8 @@ window.AppController = class AppController {
         this.state.allWeeks = data.allWeeks || [];
         if (this.state.allWeeks.length > 0) {
             this._displayWeek(this.state.allWeeks[this.state.allWeeks.length - 1]);
+        } else {
+            this._updateKPIDashboard();
         }
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
@@ -142,6 +145,10 @@ window.AppController = class AppController {
 
     _updateTableDisplay() {
         this.uiService.updateTableDisplay(this.state.currentWeek, this.filters.getFilter('tableFilter'));
+    }
+
+    _updateKPIDashboard() {
+        this.uiService.updateKPIDashboard(this.state.currentWeek, this.state.allWeeks);
     }
 
     _save() { StorageService.save({ allWeeks: this.state.allWeeks }); }
@@ -248,6 +255,7 @@ window.AppController = class AppController {
             this.uiService.updateSessionCompletionIndicator(dayNum, true);
             this._updateStatsDisplay(); // Mettre à jour les stats
             this._refreshChart();       // Mettre à jour le graphique
+            this._updateKPIDashboard();
         }
     }
 
@@ -261,6 +269,7 @@ window.AppController = class AppController {
             this.uiService.updateFailureInputValues(dayNum, day.actualSets ?? '', day.actualLastReps ?? '');
             this._updateStatsDisplay(); // Mettre à jour les stats
             this._refreshChart();       // Mettre à jour le graphique
+            this._updateKPIDashboard();
         }
     }
 
@@ -268,7 +277,7 @@ window.AppController = class AppController {
         if (!confirm("Supprimer ?")) return;
         this.state.allWeeks = this.state.allWeeks.filter(w => w.weekNumber !== weekNum);
         this._save();
-        this.state.allWeeks.length === 0 ? (this.ui.history.classList.add('hidden'), this._showSetup()) : this._showHistory();
+        this.state.allWeeks.length === 0 ? (this.ui.history.classList.add('hidden'), this._showSetup(), this._updateKPIDashboard()) : this._showHistory();
     }
 
     // --- Rendering ---
@@ -300,6 +309,7 @@ window.AppController = class AppController {
             onFailureDetails: (day, type, value) => this._handleFailureDetails(day, type, value)
         });
         this._updateTableDisplay();
+        this._updateKPIDashboard();
 
     }
 

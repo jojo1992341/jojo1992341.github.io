@@ -61,6 +61,64 @@ window.UIService = class UIService {
         this.ui.display.statsContainer.innerHTML = html;
     }
 
+
+    updateKPIDashboard(currentWeek, allWeeks) {
+        const container = this.ui.display.kpiDashboard;
+        if (!container) return;
+
+        if (!currentWeek || !Array.isArray(allWeeks) || allWeeks.length === 0) {
+            container.innerHTML = '<p class="text-muted">Aucune donnée KPI disponible.</p>';
+            return;
+        }
+
+        const sameExerciseWeeks = allWeeks.filter(w => w.exerciseType === currentWeek.exerciseType);
+        const sessions = currentWeek.program.filter(d => d.day !== 1);
+        const completed = sessions.filter(d => !!d.feedback && d.feedback !== window.CONFIG.FEEDBACK.TROP_DIFFICILE).length;
+        const failed = sessions.filter(d => d.feedback === window.CONFIG.FEEDBACK.TROP_DIFFICILE).length;
+        const pending = sessions.length - completed - failed;
+
+        const completionRate = sessions.length > 0 ? Math.round(((completed + failed) / sessions.length) * 100) : 0;
+
+        const volumeDone = currentWeek.program.reduce((acc, d) => {
+            if (d.day === 1) return acc;
+            if (d.actualSets !== undefined && d.actualLastReps !== undefined) {
+                return acc + (d.actualSets * d.reps) + d.actualLastReps;
+            }
+            return acc + (d.sets * d.reps);
+        }, 0);
+
+        const bestMax = Math.max(...sameExerciseWeeks.map(w => w.maxReps));
+        const consistencyScore = Math.max(0, Math.min(100, Math.round((completed / (sessions.length || 1)) * 70 + (pending === 0 ? 30 : 0))));
+
+        container.innerHTML = `
+            <div class="kpi-item">
+                <span class="kpi-label">Taux de suivi</span>
+                <strong class="kpi-value">${completionRate}%</strong>
+                <span class="kpi-sub">${completed + failed}/${sessions.length} séances notées</span>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Volume réalisé</span>
+                <strong class="kpi-value">${volumeDone}</strong>
+                <span class="kpi-sub">Répétitions (hors test)</span>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Échecs semaine</span>
+                <strong class="kpi-value">${failed}</strong>
+                <span class="kpi-sub">En attente: ${pending}</span>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Record personnel</span>
+                <strong class="kpi-value">${bestMax}</strong>
+                <span class="kpi-sub">Max historique (${currentWeek.exerciseType})</span>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Score constance</span>
+                <strong class="kpi-value">${consistencyScore}/100</strong>
+                <span class="kpi-sub">Basé sur complétion hebdo</span>
+            </div>
+        `;
+    }
+
     updateTableDisplay(currentWeek, filter) {
         if (!currentWeek || !this.ui.display.tableBody) return;
 
