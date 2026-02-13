@@ -1,0 +1,111 @@
+/* ========================================
+   CARDS & CONTAINERS
+   ======================================== */
+.card {
+    background: var(--gradient-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
+    overflow: hidden;
+    animation: fadeInUp 0.5s ease-out backwards;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+    transition: var(--transition);
+}
+
+.setup-card {
+    max-width: 550px;
+    margin-inline: auto;
+    border-top: 3px solid var(--primary);
+}
+
+.info-card {
+    border-left: 4px solid var(--primary);
+    background: linear-gradient(145deg, rgba(255, 68, 68, 0.08) 0%, rgba(22, 33, 62, 0.95) 100%);
+}
+
+.pedagogy-card {
+    border-left: 4px solid var(--secondary);
+    background: linear-gradient(145deg, rgba(0, 212, 255, 0.08) 0%, rgba(22, 33, 62, 0.95) 100%);
+    animation-delay: 0.1s;
+}
+
+.chart-card {
+    border-left: 4px solid var(--text-dim);
+    animation-delay: 0.2s;
+}
+
+.feedback-card {
+    border-left: 4px solid var(--success);
+    animation-delay: 0.3s;
+}
+
+.history-card-container {
+    /* Renommé pour ne pas confliter avec .history-card du modal si besoin */
+    position: relative;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.data-card {
+    max-width: 550px;
+    margin-inline: auto;
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.section-title,
+.week-title,
+.program-title {
+    font-size: clamp(1.3rem, 3vw, 1.6rem);
+    font-weight: 800;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-main);
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+}
+
+.pedagogy-title,
+.feedback-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pedagogy-icon,
+.feedback-icon {
+    font-size: 1.3em;
+}
+
+@media (max-width: 768px) {
+    .card {
+        padding: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .section-title,
+    .week-title,
+    .program-title {
+        font-size: 1.3rem;
+    }
+}
