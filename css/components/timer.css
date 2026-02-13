@@ -37,6 +37,14 @@
     font-weight: 600;
 }
 
+
+.timer-context-text {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-sm);
+    min-height: 1.2rem;
+}
+
 .timer-display {
     font-size: clamp(4rem, 10vw, 6rem);
     font-weight: 900;
@@ -84,7 +92,15 @@
         min-width: 280px;
     }
 
-    .timer-display {
+    
+.timer-context-text {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-sm);
+    min-height: 1.2rem;
+}
+
+.timer-display {
         font-size: 4.5rem;
     }
 }

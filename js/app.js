@@ -146,6 +146,45 @@ window.AppController = class AppController {
 
     _save() { StorageService.save({ allWeeks: this.state.allWeeks }); }
 
+    startSessionTimer(dayNum) {
+        if (!this.state.currentWeek) return;
+
+        const day = this.state.currentWeek.program.find(d => d.day === dayNum);
+        if (!day || day.day === 1 || day.feedback || !day.rest || day.rest <= 0) return;
+
+        const completedSeries = Math.min(day.sets, (day.timerSeriesDone || 0) + 1);
+        day.timerSeriesDone = completedSeries;
+        this._save();
+
+        this.timer.start(day.rest, {
+            contextText: `Série ${completedSeries} terminée`,
+            onImpossible: () => this._handleImpossibleFromTimer(day.day, completedSeries)
+        });
+    }
+
+    _handleImpossibleFromTimer(dayNum, completedSeries) {
+        if (!this.state.currentWeek) return;
+
+        const day = this.state.currentWeek.program.find(d => d.day === dayNum);
+        if (!day || day.feedback) return;
+
+        const repsRaw = prompt(`Série ${completedSeries + 1} incomplète. Combien de répétitions avez-vous réalisées ?`, '0');
+        if (repsRaw === null) return;
+
+        const reps = parseInt(repsRaw, 10);
+        if (Number.isNaN(reps) || reps < 0 || reps > day.reps) {
+            alert(`Valeur invalide. Entrez un nombre entre 0 et ${day.reps}.`);
+            return;
+        }
+
+        this._handleFeedback(dayNum, window.CONFIG.FEEDBACK.TROP_DIFFICILE);
+        this._handleFailureDetails(dayNum, 'sets', Math.max(0, completedSeries));
+        this._handleFailureDetails(dayNum, 'reps', reps);
+
+        day.timerSeriesDone = Math.max(0, completedSeries);
+        this._save();
+    }
+
     // --- Actions ---
 
     _handleGenerate() {
@@ -199,6 +238,7 @@ window.AppController = class AppController {
             if (feedbackType !== window.CONFIG.FEEDBACK.TROP_DIFFICILE) {
                 delete day.actualSets;
                 delete day.actualLastReps;
+                day.timerSeriesDone = day.sets;
             }
             this._save();
             this.uiService.renderFeedbackButtons(dayNum, feedbackType);

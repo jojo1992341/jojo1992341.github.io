@@ -93,7 +93,7 @@ window.UIService = class UIService {
             const isCompleted = !isTestDay && !!day.feedback;
             const restCellHtml = isCompleted
                 ? `<td class="session-status-cell" style="color:#10B981; font-weight:700;" title="Séance complétée">✓</td>`
-                : `<td class="${isRest ? 'cursor-pointer hover:text-primary' : ''}" ${isRest ? `onclick="event.stopPropagation(); window.app.timer.start(${day.rest})"` : 'style="color: var(--text-muted)"'} title="${isRest ? 'Cliquez pour démarrer le minuteur' : 'Pas de repos ce jour'}">${day.rest || '-'}s${isRest ? ' ⏱️' : ''}</td>`;
+                : `<td class="${isRest ? 'cursor-pointer hover:text-primary' : ''}" ${isRest ? `onclick="event.stopPropagation(); window.app.startSessionTimer(${day.day})"` : 'style="color: var(--text-muted)"'} title="${isRest ? 'Cliquez pour démarrer le minuteur' : 'Pas de repos ce jour'}">${day.rest || '-'}s${isRest ? ' ⏱️' : ''}</td>`;
 
             const trainingRow = `<tr data-day-type="${day.dayType}" ${isTestDay ? '' : `class="session-row" data-session-day="${day.day}"`}>
                 <td><div class="day-label">${dayLabel}</div>${sessionLabel}<div class="day-type">${day.dayType}</div>${clickHint}${intensityBadge}${fractionnementBadge}</td>
