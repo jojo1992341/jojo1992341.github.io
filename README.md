@@ -31,6 +31,17 @@
 3.  **Feedback** : Après chaque séance, notez votre ressenti. Si vous échouez, l'application vous demandera les détails pour adapter la suite.
 4.  **Bilan** : À la fin de la semaine, visualisez votre progression et générez la semaine suivante.
 
+
+### Algorithmes adaptatifs utilisés (sélection hebdomadaire)
+Suite à une veille web sur les approches d'optimisation online (bandits multi-bras), l'application intègre désormais 5 algorithmes reconnus :
+- **Epsilon-Greedy**
+- **UCB1 (Upper Confidence Bound)**
+- **Thompson Sampling**
+- **EXP3**
+- **Softmax / Boltzmann**
+
+Chaque semaine, l'application compare les performances passées (progression, complétion du volume, échecs) et sélectionne automatiquement l'algorithme le plus pertinent pour générer la semaine suivante.
+
 ### Architecture Technique
 Le projet est construit en **Vanilla JavaScript (ES6+)** sans aucun framework lourd, garantissant des performances maximales et une maintenabilité exemplaire.
 L'architecture suit strictement le pattern **MVC (Modèle-Vue-Contrôleur)** avec une séparation forte des responsabilités via des services dédiés :

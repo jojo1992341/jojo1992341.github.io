@@ -16,6 +16,13 @@ window.AnalysisService = class AnalysisService {
 
         let html = `<p><strong>Situation actuelle :</strong> ${currentWeek.globalAdvice || ''}</p>`;
 
+        if (currentWeek.algorithmSelection?.name) {
+            html += `<div style="margin-top: 1rem; background: rgba(0, 212, 255, 0.08); border: 1px solid rgba(0, 212, 255, 0.25); border-radius: 10px; padding: 0.9rem;">
+                <p style="margin:0; font-size: 0.85rem;"><strong>🧠 Algorithme sélectionné cette semaine :</strong> ${currentWeek.algorithmSelection.name}</p>
+                <p style="margin:0.3rem 0 0; font-size: 0.75rem; color: var(--text-muted);">${currentWeek.algorithmSelection.rationale || ''}</p>
+            </div>`;
+        }
+
         if (currentWeek.dayTypePerformance) {
             html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--text-muted);">';
             html += '<h4 style="font-size: 0.9rem; color: var(--text-dim); margin-bottom: 1rem; text-transform: uppercase;">Performance par Type de Jour</h4>';

@@ -5,7 +5,7 @@ window.TrainingModel = class TrainingModel {
         // --- 1. INITIALISATION & RECUPERATION DES METRIQUES ---
         const config = window.CONFIG; // Utilisation explicite de window.CONFIG
         const day1 = this._createTestDay(maxReps);
-        const progressionData = this._calculateProgression(maxReps, previousWeek);
+        const progressionData = this._calculateProgression(maxReps, previousWeek, exerciseType);
 
         // Volume de base ajusté par le facteur calculé
         const baseVolume = Math.round(maxReps * 2.5 * 6 * progressionData.factor);
@@ -50,7 +50,8 @@ window.TrainingModel = class TrainingModel {
             adaptationMetrics: progressionData.adaptationMetrics,
             volumeCompletionRate: progressionData.volumeCompletionRate,
             criticalFailure: progressionData.criticalFailure,
-            consecutiveFailures: progressionData.consecutiveFailures
+            consecutiveFailures: progressionData.consecutiveFailures,
+            algorithmSelection: progressionData.algorithmSelection
         };
     }
 
@@ -165,16 +166,30 @@ window.TrainingModel = class TrainingModel {
     }
 
     // --- ALGORITHME DE PROGRESSION AVANCÉ ---
-    static _calculateProgression(currentMax, previousWeek) {
-        if (!previousWeek) return {
-            factor: 1.0,
-            dominantFeedback: null,
-            volumeCompletionRate: 1.0,
-            dayTypePerformance: {},
-            adaptationMetrics: {},
-            consecutiveFailures: 0,
-            criticalFailure: false
-        };
+    static _calculateProgression(currentMax, previousWeek, exerciseType) {
+        const allWeeks = StorageService.load().allWeeks || [];
+        if (!previousWeek) {
+            const context = {
+                delta: 0,
+                volumeCompletionRate: 1,
+                dominantFeedback: CONFIG.FEEDBACK.PARFAIT,
+                criticalFailure: false,
+                consecutiveFailures: 0,
+                easyRate: 0,
+                failureRate: 0
+            };
+            const algorithmSelection = this._selectBestAlgorithm(allWeeks, exerciseType, context);
+            return {
+                factor: this._computeFactorFromAlgorithm(algorithmSelection.key, context),
+                dominantFeedback: null,
+                volumeCompletionRate: 1.0,
+                dayTypePerformance: {},
+                adaptationMetrics: { delta: 0, totalF: 0 },
+                consecutiveFailures: 0,
+                criticalFailure: false,
+                algorithmSelection
+            };
+        }
 
         const delta = (currentMax - previousWeek.maxReps) / previousWeek.maxReps;
 
@@ -235,22 +250,20 @@ window.TrainingModel = class TrainingModel {
         }
 
         const criticalFailure = volumeCompletionRate < 0.60;
-
-        let factor = 1.0;
-        if (dominant === CONFIG.FEEDBACK.TROP_DIFFICILE) {
-            factor = Math.max(0.70, volumeCompletionRate * 0.95);
-        } else if (delta > 0.10) {
-            factor = dominant === CONFIG.FEEDBACK.TROP_FACILE ? 1.15 : 1.10;
-        } else if (delta > 0.03) {
-            factor = dominant === CONFIG.FEEDBACK.TROP_DIFFICILE ? 0.90 : 1.05;
-        } else if (delta > -0.03) {
-            factor = dominant === CONFIG.FEEDBACK.TROP_FACILE ? 1.08 : 1.0;
-        } else {
-            factor = 0.85;
-        }
-
-        const allWeeks = StorageService.load().allWeeks || [];
         const consecutiveFailures = this._countConsecutiveFailures(allWeeks, previousWeek.exerciseType);
+
+        const intensePerf = dayTypePerformance['Intense'] || {};
+        const context = {
+            delta,
+            volumeCompletionRate,
+            dominantFeedback: dominant,
+            criticalFailure,
+            consecutiveFailures,
+            easyRate: intensePerf.easyRate || 0,
+            failureRate: intensePerf.failureRate || 0
+        };
+        const algorithmSelection = this._selectBestAlgorithm(allWeeks, exerciseType, context);
+        const factor = this._computeFactorFromAlgorithm(algorithmSelection.key, context);
 
         return {
             factor,
@@ -259,8 +272,127 @@ window.TrainingModel = class TrainingModel {
             dayTypePerformance,
             adaptationMetrics: { delta, totalF },
             consecutiveFailures,
-            criticalFailure
+            criticalFailure,
+            algorithmSelection
         };
+    }
+
+    static _getAlgorithmCatalog() {
+        return [
+            { key: 'epsilon_greedy', name: 'Epsilon-Greedy', source: 'https://en.wikipedia.org/wiki/Multi-armed_bandit' },
+            { key: 'ucb1', name: 'UCB1', source: 'https://en.wikipedia.org/wiki/Upper_confidence_bound' },
+            { key: 'thompson_sampling', name: 'Thompson Sampling', source: 'https://en.wikipedia.org/wiki/Thompson_sampling' },
+            { key: 'exp3', name: 'EXP3', source: 'https://en.wikipedia.org/wiki/Multi-armed_bandit#Adversarial_bandit' },
+            { key: 'softmax_boltzmann', name: 'Softmax/Boltzmann', source: 'https://en.wikipedia.org/wiki/Softmax_function' }
+        ];
+    }
+
+    static _selectBestAlgorithm(allWeeks, exerciseType, context) {
+        const catalog = this._getAlgorithmCatalog();
+        const rewards = this._computeHistoricalRewards(allWeeks, exerciseType);
+
+        const scored = catalog.map(algo => {
+            const stat = rewards[algo.key] || { plays: 0, avgReward: 0 };
+            const explorationBonus = 0.18 / Math.sqrt(stat.plays + 1);
+            const suitability = this._computeSuitability(algo.key, context);
+            const score = (stat.avgReward * 0.65) + (suitability * 0.35) + explorationBonus;
+            return { ...algo, plays: stat.plays, avgReward: stat.avgReward, score };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+        const winner = scored[0];
+
+        return {
+            key: winner.key,
+            name: winner.name,
+            source: winner.source,
+            score: Number(winner.score.toFixed(3)),
+            rationale: `Sélection hebdomadaire basée sur les feedbacks utilisateur (score=${winner.score.toFixed(3)}, historique=${winner.avgReward.toFixed(3)}, essais=${winner.plays}).`
+        };
+    }
+
+    static _computeHistoricalRewards(allWeeks, exerciseType) {
+        const rewards = {};
+        this._getAlgorithmCatalog().forEach(algo => {
+            rewards[algo.key] = { plays: 0, totalReward: 0, avgReward: 0 };
+        });
+
+        const sameExercise = allWeeks
+            .filter(w => w.exerciseType === exerciseType)
+            .sort((a, b) => a.weekNumber - b.weekNumber);
+
+        for (let i = 1; i < sameExercise.length; i++) {
+            const week = sameExercise[i];
+            const prevWeek = sameExercise[i - 1];
+            const key = week.algorithmSelection?.key;
+            if (!key || !rewards[key]) continue;
+
+            const reward = this._computeWeekReward(week, prevWeek);
+            rewards[key].plays += 1;
+            rewards[key].totalReward += reward;
+            rewards[key].avgReward = rewards[key].totalReward / rewards[key].plays;
+        }
+
+        return rewards;
+    }
+
+    static _computeWeekReward(week, prevWeek) {
+        const delta = prevWeek?.maxReps ? ((week.maxReps - prevWeek.maxReps) / prevWeek.maxReps) : 0;
+        const completion = Math.max(0, Math.min(1.1, week.volumeCompletionRate || 0.95));
+        const penalty = week.criticalFailure ? 0.2 : 0;
+        return Math.max(0, Math.min(1.2, (0.5 + (delta * 1.8) + (completion * 0.45) - penalty)));
+    }
+
+    static _computeSuitability(key, context) {
+        const { dominantFeedback, criticalFailure, volumeCompletionRate, easyRate, failureRate, delta } = context;
+        switch (key) {
+            case 'epsilon_greedy':
+                return criticalFailure ? 0.35 : 0.75;
+            case 'ucb1':
+                return volumeCompletionRate >= 0.9 ? 0.9 : 0.6;
+            case 'thompson_sampling':
+                return dominantFeedback === CONFIG.FEEDBACK.PARFAIT ? 0.88 : 0.72;
+            case 'exp3':
+                return (failureRate > 0.4 || dominantFeedback === CONFIG.FEEDBACK.TROP_DIFFICILE) ? 0.93 : 0.55;
+            case 'softmax_boltzmann':
+                return (easyRate > 0.4 || delta > 0.04) ? 0.9 : 0.65;
+            default:
+                return 0.5;
+        }
+    }
+
+    static _computeFactorFromAlgorithm(key, context) {
+        const { dominantFeedback, delta, volumeCompletionRate, criticalFailure, easyRate, failureRate, consecutiveFailures } = context;
+
+        switch (key) {
+            case 'epsilon_greedy': {
+                let factor = dominantFeedback === CONFIG.FEEDBACK.TROP_FACILE ? 1.08 : 1.02;
+                if (dominantFeedback === CONFIG.FEEDBACK.TROP_DIFFICILE) factor = 0.92;
+                return Math.max(0.75, Math.min(1.15, factor));
+            }
+            case 'ucb1': {
+                const factor = 1.0 + (Math.max(-0.08, Math.min(0.12, delta * 0.8))) + ((volumeCompletionRate - 0.9) * 0.12);
+                return Math.max(0.8, Math.min(1.16, factor));
+            }
+            case 'thompson_sampling': {
+                let factor = 1.03 + (easyRate * 0.07) - (failureRate * 0.12);
+                if (dominantFeedback === CONFIG.FEEDBACK.TROP_DIFFICILE) factor -= 0.08;
+                return Math.max(0.78, Math.min(1.14, factor));
+            }
+            case 'exp3': {
+                let factor = criticalFailure ? 0.82 : 0.97;
+                if (volumeCompletionRate > 0.95 && dominantFeedback !== CONFIG.FEEDBACK.TROP_DIFFICILE) factor = 1.01;
+                if (consecutiveFailures >= 2) factor -= 0.05;
+                return Math.max(0.72, Math.min(1.1, factor));
+            }
+            case 'softmax_boltzmann': {
+                const feedbackPush = dominantFeedback === CONFIG.FEEDBACK.TROP_FACILE ? 0.07 : (dominantFeedback === CONFIG.FEEDBACK.TROP_DIFFICILE ? -0.08 : 0.03);
+                const factor = 1.0 + feedbackPush + (delta * 0.45);
+                return Math.max(0.78, Math.min(1.18, factor));
+            }
+            default:
+                return 1.0;
+        }
     }
 
     static _countConsecutiveFailures(allWeeks, exerciseType) {
@@ -326,8 +458,12 @@ window.TrainingModel = class TrainingModel {
     }
 
     static _generateGlobalAdvice(currentMax, previousWeek, data, plateauInfo) {
+        const algorithmLine = data.algorithmSelection?.name
+            ? ` Algorithme actif cette semaine : <strong>${data.algorithmSelection.name}</strong>.`
+            : '';
+
         if (!previousWeek) {
-            return "Bienvenue dans votre programme personnalisé ! Semaine 1 commence par un test de calibrage, suivi de 6 jours d'entraînement avec 2 séances par jour (matin et soir), alternant intensité faible, moyenne et élevée pour stimuler la progression tout en permettant la récupération.";
+            return `Bienvenue dans votre programme personnalisé ! Semaine 1 commence par un test de calibrage, suivi de 6 jours d'entraînement avec 2 séances par jour (matin et soir), alternant intensité faible, moyenne et élevée pour stimuler la progression tout en permettant la récupération.${algorithmLine}`;
         }
 
         const diff = currentMax - previousWeek.maxReps;
@@ -377,7 +513,7 @@ window.TrainingModel = class TrainingModel {
             text += ` <strong>ℹ️ Vigilance :</strong> ${plateauInfo.suggestion}`;
         }
 
-        return text;
+        return `${text}${algorithmLine}`;
     }
 
     static calculatePrediction(currentMax, targetReps) {
