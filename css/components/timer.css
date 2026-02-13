@@ -62,6 +62,13 @@
     margin-top: var(--spacing-lg);
 }
 
+#impossibleBtn {
+    min-width: 132px;
+    padding: 0.75rem 1.1rem;
+    font-size: 0.95rem;
+}
+
+
 @keyframes scaleIn {
     from {
         opacity: 0;
