@@ -177,11 +177,13 @@ window.AppController = class AppController {
             return;
         }
 
+        const completedSets = Math.max(0, completedSeries);
         this._handleFeedback(dayNum, window.CONFIG.FEEDBACK.TROP_DIFFICILE);
-        this._handleFailureDetails(dayNum, 'sets', Math.max(0, completedSeries));
+        this._handleFailureDetails(dayNum, 'sets', completedSets);
         this._handleFailureDetails(dayNum, 'reps', reps);
+        this.uiService.updateFailureInputValues(dayNum, completedSets, reps);
 
-        day.timerSeriesDone = Math.max(0, completedSeries);
+        day.timerSeriesDone = completedSets;
         this._save();
     }
 
@@ -256,6 +258,7 @@ window.AppController = class AppController {
             if (type === 'sets') day.actualSets = parseInt(value);
             if (type === 'reps') day.actualLastReps = parseInt(value);
             this._save();
+            this.uiService.updateFailureInputValues(dayNum, day.actualSets ?? '', day.actualLastReps ?? '');
             this._updateStatsDisplay(); // Mettre à jour les stats
             this._refreshChart();       // Mettre à jour le graphique
         }

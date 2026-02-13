@@ -336,6 +336,14 @@ window.UIService = class UIService {
         }
     }
 
+    updateFailureInputValues(dayNum, completedSets, lastReps) {
+        const setsInput = document.querySelector(`.failure-sets-input[data-day="${dayNum}"]`);
+        const repsInput = document.querySelector(`.failure-reps-input[data-day="${dayNum}"]`);
+
+        if (setsInput) setsInput.value = completedSets;
+        if (repsInput) repsInput.value = lastReps;
+    }
+
     showHistory(allWeeks, callbacks) {
         this.ui.history.classList.remove('hidden');
         this.ui.display.historyContent.innerHTML = '';
